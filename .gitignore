@@ -1,0 +1,2 @@
+/server/wireguard/*_privatekey
+/server/wireguard/*_publickey

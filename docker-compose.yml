@@ -1,0 +1,59 @@
+version: '3.7'
+
+networks:
+  vpn_internal:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.6.1.0/24
+
+services:
+
+  vpn_server:
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+      - SYS_ADMIN
+    build:
+      context: ./
+      dockerfile: Dockerfile.server
+      args:
+      - UNBOUND_RESOLVE_PORT=53
+      - UNBOUND_LISTEN_ADDRESS=0.0.0.0
+      - UNBOUND_RESTRICT_ACCESS_CONTROL=10.6.1.0/24
+      - WG_PORT=51820
+      - WG_ENDPOINT_ADDRESS=10.6.1.2
+      - WG_DNS_SERVER_ADDRESS=10.6.1.2
+      - WG_INTERNAL_ADDRESS=10.100.1.1
+      - WG_ALLOWED_PEERS=10.100.1.0/24
+      - WG_ROUTE_IFACE=eth0
+    container_name: vpn_server
+    networks:
+      vpn_internal:
+        ipv4_address: 10.6.1.2
+    ports:
+      - 51820:51820/udp
+    sysctls:
+      - net.ipv4.conf.all.src_valid_mark=1
+      - net.ipv4.conf.all.forwarding=1
+      - net.ipv4.ip_forward=1
+
+  vpn_client:
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+      - SYS_ADMIN
+    build:
+      context: ./
+      dockerfile: Dockerfile.client
+      args:
+      - WG_PORT=51820
+      - WG_ENDPOINT_ADDRESS=10.6.1.2
+      - WG_DNS_SERVER_ADDRESS=10.6.1.2
+      - WG_ALLOWED_PEERS=10.100.1.0/24
+    container_name: vpn_client
+    networks:
+      vpn_internal:
+        ipv4_address: 10.6.1.3
+    depends_on:
+      - vpn_server

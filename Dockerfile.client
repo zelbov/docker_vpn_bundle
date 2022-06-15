@@ -1,0 +1,57 @@
+FROM debian:bullseye
+
+## Install dependencies
+
+RUN apt-get update
+RUN apt-get install -y --no-install-recommends bc build-essential curl dkms git \
+                    gnupg ifupdown gettext ca-certificates iproute2 iptables iputils-ping jq \
+                    libc6 libelf-dev net-tools openresolv perl pkg-config qrencode dnsutils
+
+## Install Wireguard VPN toolset 
+
+RUN apt -y install wireguard
+
+# MONKEY PATCH wg-quick to disable sysctl command run attempt
+# since the actual command already been executed by init script
+# but in Docker it breaks the init chain
+RUN sed -e '/sysctl/ s/^#*/#/' -i /usr/bin/wg-quick
+
+## Configure Wireguard VPN server
+
+# export WG_PORT=51820
+ARG WG_PORT
+
+# export ALLOWED_PEERS=0.0.0.0/0
+ARG WG_ALLOWED_PEERS
+
+# export WG_SERVER_ADDRESS=<public_ip_address>
+ARG WG_ENDPOINT_ADDRESS
+
+# export WG_DNS_SERVER_ADDRESS=<public_ip_address>
+ARG WG_DNS_SERVER_ADDRESS
+
+COPY ./server/wireguard/client_privatekey /etc/wireguard/
+COPY ./server/wireguard/server_publickey /etc/wireguard/
+COPY ./server/wireguard/wgclient.conf /etc/wireguard
+
+WORKDIR /etc/wireguard
+# cd /etc/wireguard
+
+# Pass config options & keys into wireguard configs
+
+RUN \
+SERVER_PUBLIC_KEY=$(cat server_publickey) CLIENT_PRIVATE_KEY=$(cat client_privatekey) \
+envsubst < wgclient.conf > wgclient.conf.tmp && mv wgclient.conf.tmp wgclient.conf
+
+## Run Wireguard service
+
+# Deploy Wireguard init script
+
+COPY ./client/client.sh /home/root/
+WORKDIR /home/root
+# cd /home/root
+
+RUN envsubst < client.sh > client.sh.tmp && mv client.sh.tmp client.sh
+RUN chmod +x client.sh
+
+CMD ["/home/root/client.sh"]

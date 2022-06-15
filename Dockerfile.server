@@ -1,0 +1,113 @@
+FROM debian:bullseye
+
+## Install dependencies
+
+RUN apt-get update
+RUN apt-get install -y --no-install-recommends bc build-essential curl dkms git \
+                    gnupg ifupdown gettext ca-certificates iproute2 iptables iputils-ping jq \
+                    libc6 libelf-dev net-tools openresolv perl pkg-config qrencode dnsutils
+
+# Fix possible certificates issue with Git clone:
+RUN update-ca-certificates
+
+## Install Wireguard VPN toolset 
+
+RUN apt -y install wireguard
+
+# MONKEY PATCH wg-quick to disable sysctl command run attempt
+# since the actual command already been executed by init script
+# but in Docker it breaks the init chain
+RUN sed -e '/sysctl/ s/^#*/#/' -i /usr/bin/wg-quick
+
+## Install Unbound DNS
+
+RUN apt -y install unbound unbound-anchor
+
+# Fix configurations for Unbound resolver
+RUN mkdir /usr/local/etc/unbound
+RUN echo "include: /etc/unbound/unbound.conf" > /usr/local/etc/unbound/unbound.conf
+
+## Configure Unbound DNS resolver
+
+ARG UNBOUND_RESOLVE_PORT
+# export UNBOUND_RESOLVE_PORT=53
+
+ARG UNBOUND_LISTEN_ADDRESS
+# export UNBOUND_LISTEN_ADDRESS=0.0.0.0
+
+ARG UNBOUND_RESTRICT_ACCESS_CONTROL
+# export UNBOUND_ACCESS_CONTROL=127.0.0.1/32
+
+COPY ./server/unbound/unbound.conf /etc/unbound/
+COPY ./server/unbound/unbound.conf.d/resolvconf_resolvers.conf /etc/unbound/unbound.conf.d/
+
+# Disable resolvers config modifications by daemonized resolvconf managers
+RUN sed -e '/unbound_conf/ s/^#*/#/' -i /etc/resolvconf.conf
+
+WORKDIR /etc/unbound
+# cd /etc/unbound
+
+RUN \
+envsubst < unbound.conf > unbound.conf.tmp && mv unbound.conf.tmp unbound.conf
+
+# ufw allow ${UNBOUND_RESOLVE_PORT}/udp
+EXPOSE ${UNBOUND_RESOLVE_PORT}/udp
+# ufw allow ${UNBOUND_RESOLVE_PORT}/tcp
+EXPOSE ${UNBOUND_RESOLVE_PORT}/tcp
+
+## Configure Wireguard VPN server
+
+# export WG_PORT=51820
+ARG WG_PORT
+
+# export ALLOWED_PEERS=0.0.0.0/0
+ARG WG_ALLOWED_PEERS
+
+# export WG_SERVER_ADDRESS=<public_ip_address>
+ARG WG_ENDPOINT_ADDRESS
+
+# export WG_DNS_SERVER_ADDRESS=<public_ip_address>
+ARG WG_DNS_SERVER_ADDRESS
+
+# export WG_INTERNAL_ADDRESS=<local link IP e.g. 10.0.17.15 whatever>
+ARG WG_INTERNAL_ADDRESS
+
+# export WG_ROUTE_IFACE=eth0
+ARG WG_ROUTE_IFACE
+
+# ufw allow ${WG_PORT}/udp
+EXPOSE ${WG_PORT}/udp
+
+COPY ./server/wireguard/* /etc/wireguard/
+
+WORKDIR /etc/wireguard
+# cd /etc/wireguard
+
+# Pass config options & keys into wireguard configs
+
+RUN \
+SERVER_PRIVATE_KEY=$(cat server_privatekey) CLIENT_PUBLIC_KEY=$(cat client_publickey) \
+envsubst < wg0.conf > wg0.conf.tmp && mv wg0.conf.tmp wg0.conf
+
+RUN \
+SERVER_PUBLIC_KEY=$(cat server_publickey) CLIENT_PRIVATE_KEY=$(cat client_privatekey) \
+envsubst < wgclient.conf > wgclient.conf.tmp && mv wgclient.conf.tmp wgclient.conf
+
+## Run services
+
+COPY ./server/server.sh /home/root/
+WORKDIR /home/root
+# cd /home/root
+
+RUN envsubst < server.sh > server.sh.tmp && mv server.sh.tmp server.sh
+RUN chmod +x server.sh
+
+# Execute init script
+
+CMD ["/home/root/server.sh"]
+
+# For non-docker environment, instead of prepared init script, run:
+# sudo unbound-anchor -C /etc/unbound/unbound.conf
+# sudo service wg-quick@wg0 enable && sudo service wg-quick@wg0 start
+# sudo service unbound enable && sudo service unbound start
+# qrencode -t ansiutf8 < /etc/wireguard/wgclient.conf
