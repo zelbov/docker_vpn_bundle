@@ -15,19 +15,18 @@ echo "---------"
 echo "$(dpkg -s unbound | grep Version)"
 unbound-anchor -C /etc/unbound/unbound.conf
 unbound-checkconf
-#dig example.com @127.0.0.1
-#unbound-control lookup dns.google.com
+
+echo "---------"
+echo "Running PiHole DNS resolver..."
+echo "---------"
+
+/etc/pihole/run.sh
 
 # Init Wireguard link
 echo "---------"
 echo "Setting up Wireguard link"
 echo "---------"
 wg-quick up /etc/wireguard/wg0.conf
-
-echo "---------"
-echo "Server config:"
-echo "---------"
-cat /etc/wireguard/wg0.conf
 
 echo "---------"
 echo "Client config:"
@@ -52,6 +51,7 @@ dig dns.google.com
 
 echo "---------"
 echo "Wireguard server route link established!"
+echo "---------"
 wg
 
 #trap "echo 'Shutting down' && wg-quick down ./wg0.conf" 15

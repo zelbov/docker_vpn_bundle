@@ -5,7 +5,9 @@ FROM debian:bullseye
 RUN apt-get update
 RUN apt-get install -y --no-install-recommends bc build-essential curl dkms git \
                     gnupg ifupdown gettext ca-certificates iproute2 iptables iputils-ping jq \
-                    libc6 libelf-dev net-tools openresolv perl pkg-config qrencode dnsutils
+                    libc6 libelf-dev net-tools openresolv perl pkg-config qrencode dnsutils \
+                    cron psmisc unzip idn2 netcat-openbsd procps lighttpd whiptail sudo \
+                    php-common php-cgi php-sqlite3 php-xml php-intl php-json
 
 # Fix possible certificates issue with Git clone:
 RUN update-ca-certificates
@@ -27,6 +29,70 @@ RUN apt -y install unbound unbound-anchor
 RUN mkdir /usr/local/etc/unbound
 RUN echo "include: /etc/unbound/unbound.conf" > /usr/local/etc/unbound/unbound.conf
 
+## Set up PiHole
+
+ARG PIHOLE_INTERFACE
+# export PIHOLE_INTERFACE=ph0
+
+ARG PIHOLE_LISTEN_ADDR
+# export PIHOLE_LISTEN_ADDR=10.150.0.1
+
+ARG PIHOLE_RESOLVE_PORT
+# export PIHOLE_RESOLVE_PORT=5353
+
+WORKDIR /etc/pihole
+# cd /etc/pihole
+
+# Pass setup config & values
+
+COPY ./server/pihole/setupVars.conf /etc/pihole/
+
+RUN \
+envsubst < setupVars.conf > setupVars.conf.tmp && mv setupVars.conf.tmp setupVars.conf
+
+# Paste patched install script (Docker only)
+
+COPY ./server/pihole/install.sh /etc/pihole/
+
+RUN cat install.sh | USER=root bash /dev/stdin --unattended
+# for non-Docker environments, instead of patched script, use:
+# curl -L https://install.pi-hole.net | bash /dev/stdin --unattended
+
+RUN pihole enable
+
+# Pass configs after install
+
+COPY ./server/pihole/pihole-FTL.conf /etc/pihole/
+
+RUN \
+envsubst < pihole-FTL.conf > pihole-FTL.conf.tmp && mv pihole-FTL.conf.tmp pihole-FTL.conf
+
+# PiHole Interface bootstrapper & runner script
+
+COPY ./server/pihole/run.sh /etc/pihole/
+
+RUN \
+envsubst < run.sh > run.sh.tmp && mv run.sh.tmp run.sh
+
+RUN chmod +x ./run.sh
+
+# Configure dnsmasq to match pihole interface configs
+
+COPY ./server/dnsmasq.d/resolver.conf /etc/dnsmasq.d
+
+WORKDIR /etc/dnsmasq.d
+# cd /etc/dnsmasq.d
+
+RUN \
+envsubst < resolver.conf > resolver.conf.tmp && mv resolver.conf.tmp resolver.conf
+
+# Restart DNS service
+
+RUN pihole restartdns
+
+# In production, consider resetting web admin password with:
+# pihole -a -p
+
 ## Configure Unbound DNS resolver
 
 ARG UNBOUND_RESOLVE_PORT
@@ -40,6 +106,11 @@ ARG UNBOUND_RESTRICT_ACCESS_CONTROL
 
 COPY ./server/unbound/unbound.conf /etc/unbound/
 COPY ./server/unbound/unbound.conf.d/resolvconf_resolvers.conf /etc/unbound/unbound.conf.d/
+
+WORKDIR /etc/unbound/unbound.conf.d
+
+RUN \
+envsubst < resolvconf_resolvers.conf > resolvconf_resolvers.conf.tmp && mv resolvconf_resolvers.conf.tmp resolvconf_resolvers.conf
 
 # Disable resolvers config modifications by daemonized resolvconf managers
 RUN sed -e '/unbound_conf/ s/^#*/#/' -i /etc/resolvconf.conf
@@ -108,6 +179,7 @@ CMD ["/home/root/server.sh"]
 
 # For non-docker environment, instead of prepared init script, run:
 # sudo unbound-anchor -C /etc/unbound/unbound.conf
-# sudo service wg-quick@wg0 enable && sudo service wg-quick@wg0 start
+# sudo /etc/pihole/run.sh
 # sudo service unbound enable && sudo service unbound start
+# sudo service wg-quick@wg0 enable && sudo service wg-quick@wg0 start
 # qrencode -t ansiutf8 < /etc/wireguard/wgclient.conf
