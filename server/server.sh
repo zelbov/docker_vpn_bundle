@@ -46,7 +46,7 @@ ping -c 2 8.8.8.8
 echo "---------"
 echo "Checking DNS resolver..."
 echo "---------"
-unbound &
+unbound &> /dev/null
 dig dns.google.com
 
 echo "---------"
@@ -54,8 +54,13 @@ echo "Wireguard server route link established!"
 echo "---------"
 wg
 
+echo "---------"
+echo "Starting Tor..."
+echo "---------"
+/etc/tor/run.sh
+
 #trap "echo 'Shutting down' && wg-quick down ./wg0.conf" 15
 #trap "echo 'Shutting down' && wg-quick down ./wg0.conf" 2
 
 # Hold script process running so Docker won't shut down a container:
-tail -f /var/log/unbound.log
+tail -f /var/log/unbound.log /var/log/tor.log

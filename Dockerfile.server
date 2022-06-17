@@ -5,8 +5,8 @@ FROM debian:bullseye
 RUN apt-get update
 RUN apt-get install -y --no-install-recommends bc build-essential curl dkms git \
                     gnupg ifupdown gettext ca-certificates iproute2 iptables iputils-ping jq \
-                    libc6 libelf-dev net-tools openresolv perl pkg-config qrencode dnsutils \
-                    cron psmisc unzip idn2 netcat-openbsd procps lighttpd whiptail sudo \
+                    libc6 libelf-dev net-tools openresolv perl pkg-config qrencode dnsutils apt-transport-https \
+                    cron psmisc unzip idn2 netcat-openbsd procps lighttpd whiptail sudo wget \
                     php-common php-cgi php-sqlite3 php-xml php-intl php-json
 
 # Fix possible certificates issue with Git clone:
@@ -28,6 +28,23 @@ RUN apt -y install unbound unbound-anchor
 # Fix configurations for Unbound resolver
 RUN mkdir /usr/local/etc/unbound
 RUN echo "include: /etc/unbound/unbound.conf" > /usr/local/etc/unbound/unbound.conf
+
+## Install Tor
+
+RUN apt -y install 
+
+RUN echo "\n\
+deb     [signed-by=/usr/share/keyrings/tor-archive-keyring.gpg] http://deb.torproject.org/torproject.org tor-experimental-bullseye main\n\
+deb-src [signed-by=/usr/share/keyrings/tor-archive-keyring.gpg] http://deb.torproject.org/torproject.org tor-experimental-bullseye main\n\
+" > /etc/apt/sources.list.d/torproject.list
+
+RUN \
+wget -qO- https://deb.torproject.org/torproject.org/A3C4F0F979CAA22CDBA8F512EE8CBC9E886DDD89.asc | \
+gpg --dearmor | tee /usr/share/keyrings/tor-archive-keyring.gpg >/dev/null
+
+RUN cat /etc/apt/sources.list.d/torproject.list
+
+RUN apt update && apt -y install tor
 
 ## Set up PiHole
 
@@ -92,6 +109,49 @@ RUN pihole restartdns
 
 # In production, consider resetting web admin password with:
 # pihole -a -p
+
+## Configure Tor DNS resolver
+
+ARG TORDNS_INTERFACE
+# export TORDNS_INTERFACE=td0
+
+ARG TORDNS_PORT
+# export TORDNS_PORT=9053
+
+ARG TORDNS_LISTEN_ADDRESS
+# export TORDNS_LISTEN_ADDRESS=100.170.0.1
+
+ARG TOR_PROXY_IFACE
+# export TOR_PROXY_IFACE=tp0
+
+ARG TOR_TRANS_PORT
+# export TOR_TRANS_PORT=9040
+
+ARG TOR_PROXY_LISTEN_ADDRESS
+# export TOR_PROXY_LISTEN_ADDRESS=10.171.0.1
+
+ARG TOR_VIRTUAL_IFACE
+# export TOR_VIRTUAL_IFACE=tv0
+
+ARG TOR_VIRTUAL_IFACE_SCOPE
+# export TOR_VIRTUAL_IFACE_SCOPE=172.192.0.0/11
+
+WORKDIR /etc/tor
+# cd /etc/tor
+
+COPY ./server/tor/torrc /etc/tor
+
+RUN \
+envsubst < torrc > torrc.tmp && mv torrc.tmp torrc
+
+# Add routing rules script for torsocks
+
+COPY ./server/tor/run.sh /etc/tor/
+
+RUN \
+envsubst < run.sh > run.sh.tmp && mv run.sh.tmp run.sh
+
+RUN chmod +x ./run.sh
 
 ## Configure Unbound DNS resolver
 
@@ -182,4 +242,5 @@ CMD ["/home/root/server.sh"]
 # sudo /etc/pihole/run.sh
 # sudo service unbound enable && sudo service unbound start
 # sudo service wg-quick@wg0 enable && sudo service wg-quick@wg0 start
+# sudo /etc/tor/run.sh
 # qrencode -t ansiutf8 < /etc/wireguard/wgclient.conf

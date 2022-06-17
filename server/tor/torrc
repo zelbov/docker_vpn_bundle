@@ -1,0 +1,8 @@
+DNSListenAddress ${TORDNS_LISTEN_ADDRESS}
+DNSPort ${TORDNS_LISTEN_ADDRESS}:${TORDNS_PORT}
+VirtualAddrNetworkIPv4 ${TOR_VIRTUAL_IFACE_SCOPE}
+AutomapHostsOnResolve 1
+AddressDisableIPv6 1
+ClientUseIPv6 0 
+AssumeReachableIPv6 0
+TransPort ${TOR_TRANS_PORT}

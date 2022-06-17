@@ -22,8 +22,16 @@ ping -c 2 dns.google.com
 echo "Wireguard client route link established!"
 wg
 
-trap "echo 'Shutting down' && wg-quick down /etc/wireguard/wgclient.conf" 15
-trap "echo 'Shutting down' && wg-quick down /etc/wireguard/wgclient.conf" 2
+echo
+echo "Checking Tor DNS resolver..."
+dig A juhanurmihxlp77nkq76byazcldy2hlmovfu2epvl5ankdibsot4csyd.onion
+
+echo
+echo "Checking Tor website connectivity"
+curl -o output.html -v4 --ipv4 http://juhanurmihxlp77nkq76byazcldy2hlmovfu2epvl5ankdibsot4csyd.onion
+
+echo
+echo "Client bootstrap finished!"
 
 # Hold script process running so Docker won't shut down a container:
 tail -f /var/log/btmp
