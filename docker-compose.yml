@@ -27,7 +27,7 @@ services:
       - TORDNS_INTERFACE=td0
       - TORDNS_PORT=53
       - TORDNS_LISTEN_ADDRESS=100.170.0.1
-      - TOR_VIRTUAL_IFACE_SCOPE=172.192.0.0/11
+      - TOR_VIRTUAL_IFACE_SCOPE=10.192.0.0/16
       - TOR_VIRTUAL_IFACE=tv0
       - TOR_PROXY_IFACE=tp0
       - TOR_PROXY_LISTEN_ADDRESS=100.171.0.1
@@ -36,7 +36,7 @@ services:
       - WG_ENDPOINT_ADDRESS=10.6.1.2
       - WG_DNS_SERVER_ADDRESS=10.6.1.2
       - WG_INTERNAL_ADDRESS=10.100.1.1
-      - WG_ALLOWED_PEERS=10.100.1.0/24
+      - WG_ALLOWED_PEERS=10.100.1.2/24
       - WG_ROUTE_IFACE=eth0
     container_name: vpn_server
     networks:
