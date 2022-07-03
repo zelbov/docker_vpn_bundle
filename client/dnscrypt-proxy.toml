@@ -1,0 +1,16 @@
+listen_addresses = ['${WG_DNS_SERVER_ADDRESS}:53']
+server_names = ['external-dnscrypt']
+
+ipv4_servers = true
+ipv6_servers = false
+dnscrypt_servers = true
+
+[static]
+  [static.'external-dnscrypt']
+    stamp = '${DNSSTAMP}'
+
+[query_log]
+  file = '/var/log/dnscrypt-proxy/query.log'
+
+[nx_log]
+  file = '/var/log/dnscrypt-proxy/nx.log'

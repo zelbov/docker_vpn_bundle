@@ -10,6 +10,15 @@ sysctl net.ipv4.ip_forward=1
 #set -e
 
 echo "---------"
+echo "Starting DNSCrypt reverse proxy..."
+echo "---------"
+dnscrypt-wrapper --resolver-address=${UNBOUND_LISTEN_ADDRESS}:${UNBOUND_RESOLVE_PORT} --listen-address=${DNSCRYPT_SERVER_ADDRESS}:${DNSCRYPT_RESOLVER_PORT} \
+                   --provider-name=2.dnscrypt-cert.${DNSCRYPT_PROVIDER_NAME} \
+                   --crypt-secretkey-file=/etc/dnscrypt-wrapper/out.key \
+                   --provider-cert-file=/etc/dnscrypt-wrapper/out.cert \
+                   --daemonize
+
+echo "---------"
 echo "Checking Unbound DNS resolver..."
 echo "---------"
 echo "$(dpkg -s unbound | grep Version)"
@@ -50,7 +59,7 @@ ping -c 2 8.8.8.8
 echo "---------"
 echo "Checking DNS resolver..."
 echo "---------"
-unbound &> /dev/null
+unbound > /var/log/unbound.log &
 dig dns.google.com
 
 echo "---------"

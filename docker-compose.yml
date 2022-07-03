@@ -34,7 +34,10 @@ services:
       - TOR_TRANS_PORT=9040
       - WG_PORT=51820
       - WG_ENDPOINT_ADDRESS=10.6.1.2
-      - WG_DNS_SERVER_ADDRESS=10.6.1.2
+      - WG_DNS_SERVER_ADDRESS=127.0.0.1
+      - DNSCRYPT_SERVER_ADDRESS=10.6.1.2
+      - DNSCRYPT_RESOLVER_PORT=5353
+      - DNSCRYPT_PROVIDER_NAME=external-dnscrypt
       - WG_INTERNAL_ADDRESS=10.100.1.1
       - WG_ALLOWED_PEERS=10.100.1.2/24
       - WG_ROUTE_IFACE=eth0
@@ -60,7 +63,10 @@ services:
       args:
       - WG_PORT=51820
       - WG_ENDPOINT_ADDRESS=10.6.1.2
-      - WG_DNS_SERVER_ADDRESS=10.6.1.2
+      - WG_DNS_SERVER_ADDRESS=127.0.0.1
+      - DNSCRYPT_PROVIDER_NAME=external-dnscrypt
+      # Create dnscrypt-wrapper keys with above parameters to obtain DNS stamp:
+      - DNSSTAMP=sdns://AQMAAAAAAAAADTEwLjYuMS4yOjUzNTMgX8ilzXBYxN2vSoNzTcn3ZL4HbZW-s1jY99F9PgdAjkwhMi5kbnNjcnlwdC1jZXJ0LmV4dGVybmFsLWRuc2NyeXB0
       - WG_ALLOWED_PEERS=10.100.1.0/24
     container_name: vpn_client
     networks:

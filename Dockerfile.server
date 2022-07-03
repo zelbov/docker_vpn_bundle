@@ -31,8 +31,6 @@ RUN echo "include: /etc/unbound/unbound.conf" > /usr/local/etc/unbound/unbound.c
 
 ## Install Tor
 
-RUN apt -y install 
-
 RUN echo "\n\
 deb     [signed-by=/usr/share/keyrings/tor-archive-keyring.gpg] http://deb.torproject.org/torproject.org tor-experimental-bullseye main\n\
 deb-src [signed-by=/usr/share/keyrings/tor-archive-keyring.gpg] http://deb.torproject.org/torproject.org tor-experimental-bullseye main\n\
@@ -45,6 +43,39 @@ gpg --dearmor | tee /usr/share/keyrings/tor-archive-keyring.gpg >/dev/null
 RUN cat /etc/apt/sources.list.d/torproject.list
 
 RUN apt update && apt -y install tor
+
+## Install Server-side DNSCrypt proxy
+
+RUN apt -y install autoconf cmake
+
+# libsodium 
+
+WORKDIR /tmp
+# cd /tmp
+RUN wget https://download.libsodium.org/libsodium/releases/libsodium-1.0.18-stable.tar.gz
+RUN tar xf libsodium-1.0.18-stable.tar.gz
+WORKDIR /tmp/libsodium-stable
+# cd /tmp/libsodium-stable
+#RUN CFLAGS="-O3 -fPIC" ./configure
+RUN ./configure
+RUN make && make check
+RUN make install
+RUN ldconfig
+
+# libevent2
+
+RUN apt -y install libevent-dev
+
+# dnscrypt-wrapper
+
+WORKDIR /tmp
+# cd /tmp
+RUN git clone https://github.com/cofyc/dnscrypt-wrapper.git
+WORKDIR /tmp/dnscrypt-wrapper
+# cd /tmp/dnscrypt-wrapper
+RUN make configure
+RUN ./configure
+RUN make install
 
 ## Set up PiHole
 
@@ -197,8 +228,14 @@ ARG WG_ALLOWED_PEERS
 # export WG_SERVER_ADDRESS=<public_ip_address>
 ARG WG_ENDPOINT_ADDRESS
 
-# export WG_DNS_SERVER_ADDRESS=<public_ip_address>
+# export WG_DNS_SERVER_ADDRESS=127.0.0.1
 ARG WG_DNS_SERVER_ADDRESS
+
+# export DNSCRYPT_SERVER_ADDRESS=<public_ip_address>
+ARG DNSCRYPT_SERVER_ADDRESS
+
+# export DNSCRYPT_RESOLVER_PORT=5353
+ARG DNSCRYPT_RESOLVER_PORT
 
 # export WG_INTERNAL_ADDRESS=<local link IP e.g. 10.0.17.15 whatever>
 ARG WG_INTERNAL_ADDRESS
@@ -223,6 +260,20 @@ envsubst < wg0.conf > wg0.conf.tmp && mv wg0.conf.tmp wg0.conf
 RUN \
 SERVER_PUBLIC_KEY=$(cat server_publickey) CLIENT_PRIVATE_KEY=$(cat client_privatekey) \
 envsubst < wgclient.conf > wgclient.conf.tmp && mv wgclient.conf.tmp wgclient.conf
+
+## Configure DNSCrypt wrapper proxy for server
+
+ARG DNSCRYPT_PROVIDER_NAME
+# export DNSCRYPT_PROVIDER_NAME=external-dnscrypt
+
+RUN mkdir /etc/dnscrypt-wrapper
+WORKDIR /etc/dnscrypt-wrapper
+#cd /etc/dnscrypt-wrapper
+
+COPY ./server/dnscrypt-wrapper/public.key /etc/dnscrypt-wrapper/
+COPY ./server/dnscrypt-wrapper/secret.key /etc/dnscrypt-wrapper/
+COPY ./server/dnscrypt-wrapper/out.key /etc/dnscrypt-wrapper/
+COPY ./server/dnscrypt-wrapper/out.cert /etc/dnscrypt-wrapper/
 
 ## Run services
 

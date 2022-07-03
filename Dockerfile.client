@@ -16,6 +16,28 @@ RUN apt -y install wireguard
 # but in Docker it breaks the init chain
 RUN sed -e '/sysctl/ s/^#*/#/' -i /usr/bin/wg-quick
 
+## Install DNSCrypt Proxy & utils
+
+RUN apt -y install dnscrypt-proxy
+
+## Configure DNSCrypt Proxy
+
+# export DNSCRYPT_SERVER_ADDRESS=<public_ip_address>
+ARG DNSCRYPT_SERVER_ADDRESS
+
+# export DNSCRYPT_SERVER_PORT=9053
+ARG DNSCRYPT_SERVER_PORT
+
+# export DNSSTAMP=sdns://AQcAAAAAAAAACDEwLjYuMS4yAAxleHRlcm5hbC1kbnM
+ARG DNSSTAMP
+
+WORKDIR /etc/dnscrypt-proxy
+
+COPY ./client/dnscrypt-proxy.toml ./
+
+RUN \
+envsubst < dnscrypt-proxy.toml > dnscrypt-proxy.toml.tmp && mv dnscrypt-proxy.toml.tmp dnscrypt-proxy.toml
+
 ## Configure Wireguard VPN server
 
 # export WG_PORT=51820
@@ -27,7 +49,7 @@ ARG WG_ALLOWED_PEERS
 # export WG_SERVER_ADDRESS=<public_ip_address>
 ARG WG_ENDPOINT_ADDRESS
 
-# export WG_DNS_SERVER_ADDRESS=<public_ip_address>
+# export WG_DNS_SERVER_ADDRESS=127.0.0.1
 ARG WG_DNS_SERVER_ADDRESS
 
 COPY ./server/wireguard/client_privatekey /etc/wireguard/

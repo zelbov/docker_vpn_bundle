@@ -1,2 +1,4 @@
 /server/wireguard/*_privatekey
 /server/wireguard/*_publickey
+/server/dnscrypt-wrapper/*.key
+/server/dnscrypt-wrapper/*.cert

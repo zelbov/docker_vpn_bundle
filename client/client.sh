@@ -6,6 +6,11 @@ sleep 2
 
 echo "Initializing... Pid=$$"
 
+# Init DNSCrypt Proxy
+
+echo "Setting up DNSCrypt Proxy..."
+dnscrypt-proxy -config /etc/dnscrypt-proxy/dnscrypt-proxy.toml > /var/log/dnscrypt-proxy.log &
+
 # Init Wireguard link
 echo "Setting up Wireguard link"
 wg-quick up /etc/wireguard/wgclient.conf
@@ -34,4 +39,4 @@ echo
 echo "Client bootstrap finished!"
 
 # Hold script process running so Docker won't shut down a container:
-tail -f /var/log/btmp
+tail -f /var/log/dnscrypt-proxy/query.log /var/log/dnscrypt-proxy.log
