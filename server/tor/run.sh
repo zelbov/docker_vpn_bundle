@@ -18,4 +18,4 @@ iptables -t nat -A OUTPUT     -p tcp -d ${TOR_VIRTUAL_IFACE_SCOPE} -j REDIRECT -
 
 # TODO: forward peers traffic to Tor
 
-tor &> /var/log/tor.log
+tor

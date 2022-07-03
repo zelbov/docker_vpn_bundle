@@ -28,7 +28,7 @@ dig A juhanurmihxlp77nkq76byazcldy2hlmovfu2epvl5ankdibsot4csyd.onion
 
 echo
 echo "Checking Tor website connectivity"
-curl -o output.html -v4 --ipv4 http://juhanurmihxlp77nkq76byazcldy2hlmovfu2epvl5ankdibsot4csyd.onion
+nc -z -v -w5 juhanurmihxlp77nkq76byazcldy2hlmovfu2epvl5ankdibsot4csyd.onion 80
 
 echo
 echo "Client bootstrap finished!"

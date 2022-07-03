@@ -22,7 +22,11 @@ echo "---------"
 
 /etc/pihole/run.sh
 
-# Init Wireguard link
+echo "---------"
+echo "Starting Tor..."
+echo "---------"
+/etc/tor/run.sh > /var/log/tor.log &
+
 echo "---------"
 echo "Setting up Wireguard link"
 echo "---------"
@@ -54,10 +58,12 @@ echo "Wireguard server route link established!"
 echo "---------"
 wg
 
-echo "---------"
-echo "Starting Tor..."
-echo "---------"
-/etc/tor/run.sh
+sleep 3
+
+echo
+echo "Checking Tor website connectivity"
+nc -z -v -w5 juhanurmihxlp77nkq76byazcldy2hlmovfu2epvl5ankdibsot4csyd.onion 80
+
 
 #trap "echo 'Shutting down' && wg-quick down ./wg0.conf" 15
 #trap "echo 'Shutting down' && wg-quick down ./wg0.conf" 2

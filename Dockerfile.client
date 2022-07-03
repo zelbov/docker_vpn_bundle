@@ -5,7 +5,7 @@ FROM debian:bullseye
 RUN apt-get update
 RUN apt-get install -y --no-install-recommends bc build-essential curl dkms git \
                     gnupg ifupdown gettext ca-certificates iproute2 iptables iputils-ping jq \
-                    libc6 libelf-dev net-tools openresolv perl pkg-config qrencode dnsutils
+                    libc6 libelf-dev net-tools openresolv perl pkg-config qrencode dnsutils netcat-openbsd
 
 ## Install Wireguard VPN toolset 
 
